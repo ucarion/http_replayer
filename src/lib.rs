@@ -1,3 +1,3 @@
-#[test]
-fn it_works() {
-}
+extern crate hyper;
+
+pub mod mock;
