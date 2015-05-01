@@ -1,78 +1,86 @@
-use std::fmt;
-use std::fs::File;
 use std::io::{self, Read, Write, Cursor};
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use hyper::net::{NetworkStream, NetworkConnector};
 
-#[derive(Clone, Debug)]
-pub struct MockStream {
-    read: Option<Cursor<Vec<u8>>>,
-    write: Vec<u8>,
+struct MockConnector {
+    replayer: ResponseReplayer,
+}
 
-    context: &'static str,
-    host: String,
-    scheme: String,
-    port: u16
+impl NetworkConnector for MockConnector {
+    type Stream = MockStream;
+
+    fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
+        let replayer = ResponseReplayer { context: "hello" };
+        let arc = Arc::new(Mutex::new(replayer));
+        let stream_type = StreamType::Record;
+
+        Ok(MockStream {
+            stream_type: stream_type,
+            replayer: arc,
+
+            read: None,
+            write: vec![]
+        })
+    }
+}
+
+struct ResponseReplayer {
+    context: &'static str
+}
+
+#[derive(Clone)]
+struct MockStream {
+    stream_type: StreamType,
+    replayer: Arc<Mutex<ResponseReplayer>>,
+
+    read: Option<Cursor<Vec<u8>>>,
+    write: Vec<u8>
 }
 
 impl MockStream {
-    fn new(host: String, port: u16, scheme: String, context: &'static str) -> MockStream {
-        MockStream {
-            read: None,
-            write: vec![],
-            host: host,
-            scheme: scheme,
-            port: port,
-            context: context
+    fn load_stream(&mut self) {
+        let replayer = self.replayer.lock().unwrap();
+
+        match self.stream_type {
+            StreamType::Record => {
+                // TODO: Record a response, let the replayer know, and save it
+                // as the current read.
+            }
+
+            StreamType::Replay => {
+                // TODO: Ask the replayer for a response, and save it as the
+                // current read.
+            }
         }
     }
+}
 
-    fn recorded_response(&self) -> Option<Cursor<Vec<u8>>> {
-        None
-    }
-
-    fn find_response<'a>(&self, responses: &'a [RecordedResponse]) -> Option<&'a RecordedResponse> {
-        responses.iter().find(|&response| { response.url == self.get_url() })
-    }
-
-    fn get_url(&self) -> String {
-        format!("{}://{}:{}", self.scheme, self.host, self.port)
-    }
-
-    fn record_response(&self) {
-    }
-
-    fn recorded_response_path(&self) -> PathBuf {
-        Path::new(".")
-            .join("fixtures")
-            .join("net_replayer")
-            .join(format!("{}{}", self.context, ".json"))
-    }
+#[derive(Clone)]
+enum StreamType {
+    Record,
+    Replay
 }
 
 impl Read for MockStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if let Some(ref mut cursor) = self.read {
-            cursor.read(buf)
-        } else if let Some(cursor) = self.recorded_response() {
-            self.read = Some(cursor);
-            self.read(buf)
+        if let Some(ref mut read) = self.read {
+            read.read(buf)
         } else {
-            self.record_response();
+            self.load_stream();
             self.read(buf)
         }
     }
 }
 
 impl Write for MockStream {
-    fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
-        Write::write(&mut self.write, msg)
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.write.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+        self.write.flush()
     }
 }
 
@@ -82,35 +90,7 @@ impl NetworkStream for MockStream {
     }
 }
 
-struct MockRedirectPolicy {
-    context: &'static str
-}
-
-impl MockRedirectPolicy {
-    fn new(context: &'static str) -> MockRedirectPolicy {
-        MockRedirectPolicy { context: context }
-    }
-}
-
-pub struct RecordedResponse {
-    url: String,
-    sent: Vec<u8>,
-    received: Vec<u8>
-}
-
-impl NetworkConnector for MockRedirectPolicy {
-    type Stream = MockStream;
-
-    fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
-        Ok(MockStream::new(host.to_string(), port, scheme.to_string(), self.context))
-    }
-}
-
 #[test]
-fn test_mock_stream_path() {
-    let stream = MockStream::new(
-        "127.0.0.1".to_string(), 80, "http".to_string(), "my_test");
-
-    assert_eq!("./fixtures/net_replayer/my_test.json",
-               stream.recorded_response_path().to_str().unwrap());
+fn it_works() {
+    assert!(false);
 }
