@@ -3,9 +3,16 @@ use std::io::{self, Write};
 use hyper::net::{HttpConnector, NetworkConnector};
 use hyper::client::Response;
 
-pub fn fetch_http(host: &str, port: u16, scheme: &str, data: &[u8]) -> io::Result<Vec<u8>> {
+#[derive(Clone)]
+pub struct Url {
+    pub host: String,
+    pub port: u16,
+    pub scheme: String,
+}
+
+pub fn fetch_http(url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
     let mut connector = HttpConnector(None);
-    let mut stream = try!(connector.connect(host, port, scheme));
+    let mut stream = try!(connector.connect(&url.host, url.port, &url.scheme));
 
     try!(stream.write(data));
 

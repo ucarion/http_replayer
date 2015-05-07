@@ -4,6 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use hyper::net::{NetworkStream, NetworkConnector};
 
+use net::{self, Url};
+
 struct MockConnector {
     replayer: ResponseReplayer,
 }
@@ -17,6 +19,7 @@ impl NetworkConnector for MockConnector {
         let stream_type = StreamType::Record;
 
         Ok(MockStream {
+            url: Url { host: host.to_string(), port: port, scheme: scheme.to_string() },
             stream_type: stream_type,
             replayer: arc,
 
@@ -30,8 +33,19 @@ struct ResponseReplayer {
     context: &'static str
 }
 
+impl ResponseReplayer {
+    fn record_response(&mut self, url: &Url, data: &[u8]) {
+
+    }
+
+    fn replay_response(&mut self, url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
+        Ok(vec![])
+    }
+}
+
 #[derive(Clone)]
 struct MockStream {
+    url: Url,
     stream_type: StreamType,
     replayer: Arc<Mutex<ResponseReplayer>>,
 
@@ -41,17 +55,20 @@ struct MockStream {
 
 impl MockStream {
     fn load_stream(&mut self) {
-        let replayer = self.replayer.lock().unwrap();
+        let mut replayer = self.replayer.lock().unwrap();
 
         match self.stream_type {
             StreamType::Record => {
-                // TODO: Record a response, let the replayer know, and save it
-                // as the current read.
+                let actual_res = net::fetch_http(&self.url, &self.write).ok()
+                    .expect("Failed to record actual HTTP");
+                replayer.record_response(&self.url, &actual_res);
+                self.read = Some(Cursor::new(actual_res));
             }
 
             StreamType::Replay => {
-                // TODO: Ask the replayer for a response, and save it as the
-                // current read.
+                let res = replayer.replay_response(&self.url, &self.write).ok()
+                    .expect("Failed to replay HTTP");
+                self.read = Some(Cursor::new(res));
             }
         }
     }
@@ -88,9 +105,4 @@ impl NetworkStream for MockStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
         Ok("127.0.0.1:1337".parse().unwrap())
     }
-}
-
-#[test]
-fn it_works() {
-    assert!(false);
 }
