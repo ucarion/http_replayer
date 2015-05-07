@@ -8,21 +8,28 @@ use net::{self, Url};
 use replayer::HttpReplayer;
 
 struct MockConnector {
-    replayer: HttpReplayer,
+    replayer: Arc<Mutex<HttpReplayer>>,
+}
+
+impl MockConnector {
+    fn new(context: &'static str) -> MockConnector {
+        let replayer = HttpReplayer::new(context);
+        let replayer = Arc::new(Mutex::new(replayer));
+
+        MockConnector { replayer: replayer }
+    }
 }
 
 impl NetworkConnector for MockConnector {
     type Stream = MockStream;
 
     fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
-        let replayer = HttpReplayer::new("hello");
-        let arc = Arc::new(Mutex::new(replayer));
         let stream_type = StreamType::Record;
 
         Ok(MockStream {
             url: Url { host: host.to_string(), port: port, scheme: scheme.to_string() },
             stream_type: stream_type,
-            replayer: arc,
+            replayer: self.replayer.clone(),
 
             read: None,
             write: vec![]
@@ -48,14 +55,21 @@ impl MockStream {
             StreamType::Record => {
                 let actual_res = net::fetch_http(&self.url, &self.write).ok()
                     .expect("Failed to record actual HTTP");
-                replayer.record_response(&self.url, &actual_res);
+
+                replayer.record_response(
+                    self.url.clone(),
+                    self.write.clone(),
+                    actual_res.clone());
                 self.read = Some(Cursor::new(actual_res));
             }
 
             StreamType::Replay => {
-                let res = replayer.replay_response(&self.url, &self.write).ok()
+                let res = replayer.replay_response(
+                    self.url.clone(),
+                    self.write.clone())
                     .expect("Failed to replay HTTP");
-                self.read = Some(Cursor::new(res));
+
+                self.read = Some(Cursor::new(res.clone()));
             }
         }
     }
@@ -99,23 +113,34 @@ fn test_normal_usage() {
     // TODO: This works, but it should be testing against a local server instead
     // of example.com.
 
-    // use hyper::Client;
+    use hyper::Client;
 
-    // let replayer = ResponseReplayer { context: "test" };
-    // let connector = MockConnector { replayer: replayer };
+    let connector = MockConnector::new("test");
 
-    // // Create a client.
-    // let mut client = Client::with_connector(connector);
+    // Create a client.
+    let mut client = Client::with_connector(connector);
 
-    // // Creating an outgoing request.
-    // let mut res = client.get("http://www.example.com/")
-    //     // let 'er go!
-    //     .send().unwrap();
+    // Creating an outgoing request.
+    let mut res = client.get("http://www.example.com/")
+        // let 'er go!
+        .send().unwrap();
 
-    // // Read the Response.
-    // let mut body = String::new();
-    // res.read_to_string(&mut body).unwrap();
+    // Read the Response.
+    let mut body = String::new();
+    res.read_to_string(&mut body).unwrap();
 
-    // println!("Response: {}", body);
-    // panic!();
+    println!("Response: {}", body);
+
+    // Creating an outgoing request.
+    let mut res = client.get("http://www.ulysse.io/")
+        // let 'er go!
+        .send().unwrap();
+
+    // Read the Response.
+    let mut body = String::new();
+    res.read_to_string(&mut body).unwrap();
+
+    println!("Response: {}", body);
+
+    panic!();
 }

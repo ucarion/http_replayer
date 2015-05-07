@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use hyper::net::{HttpConnector, NetworkConnector};
 use hyper::client::Response;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Url {
     pub host: String,
     pub port: u16,
