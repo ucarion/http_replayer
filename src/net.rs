@@ -18,8 +18,8 @@ pub fn fetch_http(url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
 
     let mut buf = Vec::new();
     let mut res = Response::new(Box::new(stream)).unwrap();
-    try!(writeln!(&mut buf, "{} {}", res.version, res.status));
-    try!(write!(&mut buf, "{}", res.headers));
+    try!(write!(&mut buf, "{} {}\r\n", res.version, res.status));
+    try!(write!(&mut buf, "{}\r\n", res.headers));
     try!(io::copy(&mut res, &mut buf));
 
     Ok(buf)

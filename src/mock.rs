@@ -106,3 +106,29 @@ impl NetworkStream for MockStream {
         Ok("127.0.0.1:1337".parse().unwrap())
     }
 }
+
+#[test]
+fn test_normal_usage() {
+    // TODO: This works, but it should be testing against a local server instead
+    // of example.com.
+
+    // use hyper::Client;
+
+    // let replayer = ResponseReplayer { context: "test" };
+    // let connector = MockConnector { replayer: replayer };
+
+    // // Create a client.
+    // let mut client = Client::with_connector(connector);
+
+    // // Creating an outgoing request.
+    // let mut res = client.get("http://www.example.com/")
+    //     // let 'er go!
+    //     .send().unwrap();
+
+    // // Read the Response.
+    // let mut body = String::new();
+    // res.read_to_string(&mut body).unwrap();
+
+    // println!("Response: {}", body);
+    // panic!();
+}
