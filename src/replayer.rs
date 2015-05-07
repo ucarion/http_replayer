@@ -52,10 +52,6 @@ impl HttpReplayer {
         fs::metadata(HttpReplayer::serialization_path_for(context)).is_ok()
     }
 
-    fn serialization_path(&self) -> PathBuf {
-        HttpReplayer::serialization_path_for(&self.context)
-    }
-
     fn serialization_path_for(context: &str) -> PathBuf {
         let suffix = format!("{}.json", context);
         Path::new(".").join("fixtures").join("http_replayer").join(suffix)
@@ -71,10 +67,10 @@ impl Drop for HttpReplayer {
 
 #[test]
 fn test_serialization_path() {
-    let replayer = HttpReplayer::new("foobar");
+    let actual = HttpReplayer::serialization_path_for("foobar");
     let expected = "./fixtures/http_replayer/foobar.json";
 
-    assert_eq!(expected, replayer.serialization_path().to_str().unwrap());
+    assert_eq!(expected, actual.to_str().unwrap());
 }
 
 #[test]
