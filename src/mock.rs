@@ -5,16 +5,17 @@ use std::sync::{Arc, Mutex};
 use hyper::net::{NetworkStream, NetworkConnector};
 
 use net::{self, Url};
+use replayer::HttpReplayer;
 
 struct MockConnector {
-    replayer: ResponseReplayer,
+    replayer: HttpReplayer,
 }
 
 impl NetworkConnector for MockConnector {
     type Stream = MockStream;
 
     fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
-        let replayer = ResponseReplayer { context: "hello" };
+        let replayer = HttpReplayer::new("hello");
         let arc = Arc::new(Mutex::new(replayer));
         let stream_type = StreamType::Record;
 
@@ -29,25 +30,11 @@ impl NetworkConnector for MockConnector {
     }
 }
 
-struct ResponseReplayer {
-    context: &'static str
-}
-
-impl ResponseReplayer {
-    fn record_response(&mut self, url: &Url, data: &[u8]) {
-
-    }
-
-    fn replay_response(&mut self, url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
-        Ok(vec![])
-    }
-}
-
 #[derive(Clone)]
 struct MockStream {
     url: Url,
     stream_type: StreamType,
-    replayer: Arc<Mutex<ResponseReplayer>>,
+    replayer: Arc<Mutex<HttpReplayer>>,
 
     read: Option<Cursor<Vec<u8>>>,
     write: Vec<u8>
