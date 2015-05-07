@@ -16,11 +16,15 @@ impl HttpReplayer {
         HttpReplayer { context: context, recordings: HashMap::new() }
     }
 
-    pub fn record_response(&mut self, url: Url, request: Vec<u8>, response: Vec<u8>) {
+    pub fn load_stream(&mut self, url: Url, request: Vec<u8>) -> Option<&Vec<u8>> {
+
+    }
+
+    fn record_response(&mut self, url: Url, request: Vec<u8>, response: Vec<u8>) {
         self.recordings.insert((url, request), response);
     }
 
-    pub fn replay_response(&mut self, url: Url, request: Vec<u8>) -> Option<&Vec<u8>> {
+    fn replay_response(&mut self, url: Url, request: Vec<u8>) -> Option<&Vec<u8>> {
         self.recordings.get(&(url, request))
     }
 

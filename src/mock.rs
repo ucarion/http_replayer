@@ -24,11 +24,8 @@ impl NetworkConnector for MockConnector {
     type Stream = MockStream;
 
     fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
-        let stream_type = StreamType::Record;
-
         Ok(MockStream {
             url: Url { host: host.to_string(), port: port, scheme: scheme.to_string() },
-            stream_type: stream_type,
             replayer: self.replayer.clone(),
 
             read: None,
@@ -40,7 +37,6 @@ impl NetworkConnector for MockConnector {
 #[derive(Clone)]
 struct MockStream {
     url: Url,
-    stream_type: StreamType,
     replayer: Arc<Mutex<HttpReplayer>>,
 
     read: Option<Cursor<Vec<u8>>>,
@@ -50,35 +46,11 @@ struct MockStream {
 impl MockStream {
     fn load_stream(&mut self) {
         let mut replayer = self.replayer.lock().unwrap();
+        let stream = replayer.load_stream(self.url.clone(), self.write.clone())
+            .expect("Failed to load HTTP response").clone();
 
-        match self.stream_type {
-            StreamType::Record => {
-                let actual_res = net::fetch_http(&self.url, &self.write).ok()
-                    .expect("Failed to record actual HTTP");
-
-                replayer.record_response(
-                    self.url.clone(),
-                    self.write.clone(),
-                    actual_res.clone());
-                self.read = Some(Cursor::new(actual_res));
-            }
-
-            StreamType::Replay => {
-                let res = replayer.replay_response(
-                    self.url.clone(),
-                    self.write.clone())
-                    .expect("Failed to replay HTTP");
-
-                self.read = Some(Cursor::new(res.clone()));
-            }
-        }
+        self.read = Some(Cursor::new(stream))
     }
-}
-
-#[derive(Clone)]
-enum StreamType {
-    Record,
-    Replay
 }
 
 impl Read for MockStream {
