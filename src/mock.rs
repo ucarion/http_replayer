@@ -46,10 +46,10 @@ struct MockStream {
 impl MockStream {
     fn load_stream(&mut self) {
         let mut replayer = self.replayer.lock().unwrap();
-        let stream = replayer.load_stream(self.url.clone(), self.write.clone())
+        let response = replayer.load_response(self.url.clone(), self.write.clone())
             .expect("Failed to load HTTP response").clone();
 
-        self.read = Some(Cursor::new(stream))
+        self.read = Some(Cursor::new(response))
     }
 }
 
@@ -78,41 +78,4 @@ impl NetworkStream for MockStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
         Ok("127.0.0.1:1337".parse().unwrap())
     }
-}
-
-#[test]
-fn test_normal_usage() {
-    // TODO: This works, but it should be testing against a local server instead
-    // of example.com.
-
-    use hyper::Client;
-
-    let connector = MockConnector::new("test");
-
-    // Create a client.
-    let mut client = Client::with_connector(connector);
-
-    // Creating an outgoing request.
-    let mut res = client.get("http://www.example.com/")
-        // let 'er go!
-        .send().unwrap();
-
-    // Read the Response.
-    let mut body = String::new();
-    res.read_to_string(&mut body).unwrap();
-
-    println!("Response: {}", body);
-
-    // Creating an outgoing request.
-    let mut res = client.get("http://www.ulysse.io/")
-        // let 'er go!
-        .send().unwrap();
-
-    // Read the Response.
-    let mut body = String::new();
-    res.read_to_string(&mut body).unwrap();
-
-    println!("Response: {}", body);
-
-    panic!();
 }
