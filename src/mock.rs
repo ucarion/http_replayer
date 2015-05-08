@@ -7,12 +7,12 @@ use hyper::net::{NetworkStream, NetworkConnector};
 use net::{self, Url};
 use replayer::HttpReplayer;
 
-struct MockConnector {
+pub struct MockConnector {
     replayer: Arc<Mutex<HttpReplayer>>,
 }
 
 impl MockConnector {
-    fn new(context: &'static str) -> MockConnector {
+    pub fn new(context: &'static str) -> MockConnector {
         let replayer = HttpReplayer::new(context);
         let replayer = Arc::new(Mutex::new(replayer));
 
@@ -35,7 +35,7 @@ impl NetworkConnector for MockConnector {
 }
 
 #[derive(Clone)]
-struct MockStream {
+pub struct MockStream {
     url: Url,
     replayer: Arc<Mutex<HttpReplayer>>,
 
