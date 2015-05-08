@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 use std::fmt;
+use std::error::Error;
 
 use hyper::net::{HttpConnector, NetworkConnector};
 use hyper::client::Response;
@@ -17,7 +18,7 @@ impl fmt::Display for Url {
     }
 }
 
-pub fn fetch_http(url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
+pub fn fetch_http(url: &Url, data: &[u8]) -> Result<Vec<u8>, Box<Error>> {
     let mut connector = HttpConnector(None);
     let mut stream = try!(connector.connect(&url.host, url.port, &url.scheme));
 

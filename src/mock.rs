@@ -23,7 +23,7 @@ impl MockConnector {
 impl NetworkConnector for MockConnector {
     type Stream = MockStream;
 
-    fn connect(&mut self, host: &str, port: u16, scheme: &str) -> io::Result<MockStream> {
+    fn connect(&mut self, host: &str, port: u16, scheme: &str) -> ::hyper::error::Result<MockStream> {
         Ok(MockStream {
             url: Url { host: host.to_string(), port: port, scheme: scheme.to_string() },
             replayer: self.replayer.clone(),
