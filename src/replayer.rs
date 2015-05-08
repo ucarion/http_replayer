@@ -1,12 +1,15 @@
 use std::collections::HashMap;
-use std::io;
-use std::fs::{self, File, PathExt};
+use std::io::{self, Read, Write};
+use std::fs::{self, File, PathExt, OpenOptions};
 use std::path::{Path, PathBuf};
+
+use rustc_serialize::json;
 
 use net::Url;
 
 // TODO: Types RequestBytes, ResponseBytes ?
 
+#[derive(Debug)]
 pub struct HttpReplayer {
     context: String,
     stream_type: StreamType,
@@ -21,18 +24,16 @@ enum StreamType {
 
 impl HttpReplayer {
     pub fn new(context: &str) -> HttpReplayer {
-        if HttpReplayer::serialization_path_exists(context) {
-            HttpReplayer {
-                context: context.to_string(),
-                stream_type: StreamType::Replay,
-                recordings: HashMap::new()
-            }
+        let (stream_type, recordings) = if HttpReplayer::serialization_path_exists(context) {
+            (StreamType::Replay, HttpReplayer::load_recordings(context))
         } else {
-            HttpReplayer {
-                context: context.to_string(),
-                stream_type: StreamType::Record,
-                recordings: HashMap::new()
-            }
+            (StreamType::Record, HashMap::new())
+        };
+
+        HttpReplayer {
+            context: context.to_string(),
+            stream_type: stream_type,
+            recordings: recordings
         }
     }
 
@@ -54,6 +55,30 @@ impl HttpReplayer {
         format!("{}:{:?}", url, request)
     }
 
+    fn dump_recordings(&self) {
+        let recordings = json::encode(&self.recordings).ok()
+            .expect("Could not encode recordings to JSON");
+        let path = HttpReplayer::serialization_path_for(&self.context);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path).ok()
+            .expect("Could not open serialization file");
+
+        file.write_all(recordings.as_bytes()).unwrap();
+    }
+
+    fn load_recordings(context: &str) -> HashMap<String, Vec<u8>> {
+        let path = HttpReplayer::serialization_path_for(context);
+        let mut file = File::open(path).ok()
+            .expect("Could not open serialization file");
+
+        let mut s = String::new();
+        file.read_to_string(&mut s).unwrap();
+
+        json::decode(&s).unwrap()
+    }
+
     fn serialization_path_exists(context: &str) -> bool {
         fs::metadata(HttpReplayer::serialization_path_for(context)).is_ok()
     }
@@ -66,7 +91,11 @@ impl HttpReplayer {
 
 impl Drop for HttpReplayer {
     fn drop(&mut self) {
+        self.dump_recordings();
+
         drop(&mut self.recordings);
+        drop(&mut self.context);
+        drop(&mut self.stream_type);
     }
 }
 
@@ -98,3 +127,23 @@ fn test_encode_request() {
 
     assert_eq!("http://example.com:80:[1, 2, 3]", HttpReplayer::encode_request(&url, &data));
 }
+
+// TODO: Clean up this test in such a way that it can really prove the replayer's Drop is properly
+// called and whatnot, and do so without causing side effects.
+//
+// #[test]
+// fn it_works() {
+//     {
+//         let mut replayer = HttpReplayer::new("ulysse");
+//         replayer.record_response(Url {
+//             host: "example.com".to_string(),
+//             port: 80,
+//             scheme: "http".to_string()
+//         }, vec![1, 2, 3], vec![4, 5, 6]);
+//     } // replayer dies here
+//
+//     let replayer = HttpReplayer::new("ulysse");
+//     println!("{:?}", replayer);
+//
+//     panic!();
+// }
