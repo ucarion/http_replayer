@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use std::fmt;
 
 use hyper::net::{HttpConnector, NetworkConnector};
 use hyper::client::Response;
@@ -8,6 +9,12 @@ pub struct Url {
     pub host: String,
     pub port: u16,
     pub scheme: String,
+}
+
+impl fmt::Display for Url {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
+    }
 }
 
 pub fn fetch_http(url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
@@ -23,6 +30,12 @@ pub fn fetch_http(url: &Url, data: &[u8]) -> io::Result<Vec<u8>> {
     try!(io::copy(&mut res, &mut buf));
 
     Ok(buf)
+}
+
+#[test]
+fn test_display() {
+    let url = Url { host: "example.com".to_string(), port: 80, scheme: "http".to_string() };
+    assert_eq!("http://example.com:80", url.to_string());
 }
 
 #[test]

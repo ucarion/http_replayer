@@ -5,3 +5,4 @@ authors = ["Ulysse Carion <ulysse@ulysse.io>"]
 
 [dependencies]
 hyper = "*"
+rustc-serialize = "*"

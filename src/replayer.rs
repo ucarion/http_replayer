@@ -8,9 +8,9 @@ use net::Url;
 // TODO: Types RequestBytes, ResponseBytes ?
 
 pub struct HttpReplayer {
-    context: &'static str,
+    context: String,
     stream_type: StreamType,
-    recordings: HashMap<(Url, Vec<u8>), Vec<u8>>
+    recordings: HashMap<String, Vec<u8>>
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -20,16 +20,16 @@ enum StreamType {
 }
 
 impl HttpReplayer {
-    pub fn new(context: &'static str) -> HttpReplayer {
+    pub fn new(context: &str) -> HttpReplayer {
         if HttpReplayer::serialization_path_exists(context) {
             HttpReplayer {
-                context: context,
+                context: context.to_string(),
                 stream_type: StreamType::Replay,
                 recordings: HashMap::new()
             }
         } else {
             HttpReplayer {
-                context: context,
+                context: context.to_string(),
                 stream_type: StreamType::Record,
                 recordings: HashMap::new()
             }
@@ -41,11 +41,17 @@ impl HttpReplayer {
     }
 
     fn record_response(&mut self, url: Url, request: Vec<u8>, response: Vec<u8>) {
-        self.recordings.insert((url, request), response);
+        let request = HttpReplayer::encode_request(&url, &request);
+        self.recordings.insert(request, response);
     }
 
     fn replay_response(&mut self, url: Url, request: Vec<u8>) -> Option<&Vec<u8>> {
-        self.recordings.get(&(url, request))
+        let request = HttpReplayer::encode_request(&url, &request);
+        self.recordings.get(&request)
+    }
+
+    fn encode_request(url: &Url, request: &Vec<u8>) -> String {
+        format!("{}:{:?}", url, request)
     }
 
     fn serialization_path_exists(context: &str) -> bool {
@@ -64,7 +70,6 @@ impl Drop for HttpReplayer {
     }
 }
 
-
 #[test]
 fn test_serialization_path() {
     let actual = HttpReplayer::serialization_path_for("foobar");
@@ -74,13 +79,22 @@ fn test_serialization_path() {
 }
 
 #[test]
-fn test_stream_type() {
+fn test_initialize() {
     let replayer = HttpReplayer::new("does-not-exist");
     assert_eq!(StreamType::Record, replayer.stream_type);
 
     fs::create_dir_all("./fixtures/http_replayer").unwrap();
-    File::create("./fixtures/http_replayer/does-exist.json").unwrap();
+    let mut f = File::create("./fixtures/http_replayer/does-exist.json").unwrap();
+    // f.write_all("{}")
 
     let replayer = HttpReplayer::new("does-exist");
     assert_eq!(StreamType::Replay, replayer.stream_type);
+}
+
+#[test]
+fn test_encode_request() {
+    let url = Url { host: "example.com".to_string(), port: 80, scheme: "http".to_string() };
+    let data = vec![1, 2, 3];
+
+    assert_eq!("http://example.com:80:[1, 2, 3]", HttpReplayer::encode_request(&url, &data));
 }
