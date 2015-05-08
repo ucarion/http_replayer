@@ -7,8 +7,6 @@ use rustc_serialize::json;
 
 use net::Url;
 
-// TODO: Types RequestBytes, ResponseBytes ?
-
 #[derive(Debug)]
 pub struct HttpReplayer {
     context: String,
