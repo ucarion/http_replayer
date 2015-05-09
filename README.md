@@ -1,12 +1,14 @@
 # http_replayer
 
-`http_replayer` is a level of middleware for [hyper][1] that replays HTTP server responses. This lets your tests be 
-deterministic, and not have to rely on (or wait for) the network to run your tests. This project is similar to the Ruby
+`http_replayer` is a level of middleware for [hyper][1] that replays HTTP server
+responses. This lets your tests be deterministic, and not have to rely on (or
+wait for) the network to run your tests. This project is similar to the Ruby
 project [vcr][2], if you've used something like that before.
 
-You could probably have written this library yourself. It simply maintains a `HashMap` from (URL, Request) pairs to server
-responses. If sending the same request to the same server multiple times always produces the same response from the server,
-then you can use `http_replayer`.
+You could probably have written this library yourself. It simply maintains
+a `HashMap` from (URL, Request) pairs to server responses. If sending the same
+request to the same server multiple times always produces the same response from
+the server, then you can use `http_replayer`.
 
 ## Usage
 
@@ -33,8 +35,9 @@ fn main() {
 
     // Creating an outgoing request.
     //
-    // The first time you run this, Hyper will actually send out a request to the internet, but every time
-    // thereafter a locally saved response will be returned instead.
+    // The first time you run this, Hyper will actually send out a request to
+    // the internet, but every time thereafter a locally saved response will be
+    // returned instead.
     let mut res = client.get("http://www.example.com/")
         // let 'er go!
         .send().unwrap();
@@ -47,8 +50,16 @@ fn main() {
 }
 ```
 
-A `MockConnector` plugs into hyper's [`NetworkConnector`][3] interface to do its' magic. `MockConnector#new` accepts a
-`context: &str` as argument -- using unique contexts allows you to use multiple `http_replayer` sessions concurrently.
+A `MockConnector` plugs into hyper's [`NetworkConnector`][3] interface to do
+its' magic. `MockConnector#new` accepts a `context: &str` as argument -- using
+unique contexts allows you to use multiple `http_replayer` sessions
+concurrently.
+
+In the example above, because we passed `"example"` as the context, the HTTP
+request and response was saved in a file called
+`./fixtures/http_replayer/example.json`, which you may want to check into
+version control. All of `http_replayer`'s saved state is stored in this file, so
+to completely reset `http_replayer`, you simply need to delete this file.
 
 ## Warnings
 
