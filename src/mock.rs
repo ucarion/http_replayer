@@ -2,7 +2,7 @@ use std::io::{self, Read, Write, Cursor};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
-use hyper::net::{NetworkStream, NetworkConnector};
+use hyper::net::{ContextVerifier, NetworkStream, NetworkConnector};
 
 use net::{self, Url};
 use replayer::HttpReplayer;
@@ -23,7 +23,7 @@ impl MockConnector {
 impl NetworkConnector for MockConnector {
     type Stream = MockStream;
 
-    fn connect(&mut self, host: &str, port: u16, scheme: &str) -> ::hyper::error::Result<MockStream> {
+    fn connect(&self, host: &str, port: u16, scheme: &str) -> ::hyper::error::Result<MockStream> {
         Ok(MockStream {
             url: Url { host: host.to_string(), port: port, scheme: scheme.to_string() },
             replayer: self.replayer.clone(),
@@ -31,6 +31,10 @@ impl NetworkConnector for MockConnector {
             read: None,
             write: vec![]
         })
+    }
+
+    fn set_ssl_verifier(&mut self, _verifier: ContextVerifier) {
+        // TODO: Pass this verifier to HttpConnector ?
     }
 }
 
