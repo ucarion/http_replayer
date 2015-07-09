@@ -55,9 +55,9 @@ its' magic. `MockConnector#new` accepts a `context: &str` as argument -- using
 unique contexts allows you to use multiple `http_replayer` sessions
 concurrently.
 
-In the example above, because we passed `"example"` as the context, the HTTP
+In the example above, because we passed `"testing"` as the context, the HTTP
 request and response was saved in a file called
-`./fixtures/http_replayer/example.json`, which you may want to check into
+`./fixtures/http_replayer/testing.json`, which you may want to check into
 version control. All of `http_replayer`'s saved state is stored in this file, so
 to completely reset `http_replayer`, you simply need to delete this file.
 
